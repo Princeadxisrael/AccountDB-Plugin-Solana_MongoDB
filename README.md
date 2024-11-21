@@ -7,10 +7,10 @@ Implement and benchmark test the geyser plugin implementation with MongoDB as it
 Who are Users? 
 
 # Data Model Designs?
--Transactions -> `transaction` collection
--Accounts    ->  `accounts` collection
--Blocks      ->  `blocks` collection
--Slots       ->  `slots` collection
+- Transactions -> `transaction` collection
+- Accounts    ->  `accounts` collection
+- Blocks      ->  `blocks` collection
+- Slots       ->  `slots` collection
 
 # Indexing for Query 
 Indexing by transaction signature
