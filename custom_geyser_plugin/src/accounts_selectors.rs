@@ -9,7 +9,7 @@ pub(crate) struct AccountsSelector {
 
 
 impl AccountsSelector {
-    
+    //initialize new accounts and owners
     pub fn new(accounts: &[String], owners: &[String]) -> Self {
         info!(
             "Creating AccountsSelector from accounts: {:?}, owners: {:?}",
