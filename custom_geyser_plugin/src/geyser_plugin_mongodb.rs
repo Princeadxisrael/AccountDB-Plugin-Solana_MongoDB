@@ -26,30 +26,30 @@ pub struct GeyserPluginMongodb {
     batch_starting_slot: Option<u64>,
 }
 
-impl std::fmt::Debug for GeyserPluginPostgres {
+impl std::fmt::Debug for GeyserPluginMongoDB {
     fn fmt(&self, _: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         Ok(())
     }
 }
 
-/// The Configuration for the PostgreSQL plugin
+/// The Configuration for the MongoDb plugin
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct GeyserPluginMongoDBConfig {
-    /// The host name or IP of the PostgreSQL server
+    /// The host name or IP of the MongoDb server
     pub host: Option<String>,
 
-    /// The user name of the PostgreSQL server.
+    /// The user name of the MongoDb server.
     pub user: Option<String>,
 
-    /// The port number of the PostgreSQL database, the default is 27017
+    /// The port number of the MongoDb database, the default is 27017
     pub port: Option<u16>,
 
-    /// The connection string of PostgreSQL database, if this is set
+    /// The connection string of MongoDb database, if this is set
     /// `host`, `user` and `port` will be ignored.
     pub connection_str: Option<String>,
 
     /// Controls the number of threads establishing connections to
-    /// the PostgreSQL server. The default is 10.
+    /// the MongoDb server. The default is 10.
     pub threads: Option<usize>,
 
     /// Controls the batch size when bulk loading accounts.
@@ -57,7 +57,7 @@ pub struct GeyserPluginMongoDBConfig {
     pub batch_size: Option<usize>,
 
     /// Controls whether to panic the validator in case of errors
-    /// writing to PostgreSQL server. The default is false
+    /// writing to MongoDb server. The default is false
     pub panic_on_db_errors: Option<bool>,
 
     /// Indicates whether to store historical data for accounts

@@ -1,17 +1,13 @@
 /// A concurrent implementation for writing accounts into the PostgreSQL in parallel.
 use {
     crate::{
-        geyser_plugin_mongodb::{GeyserPuConfig, GeyserPluginPostgresError},
-        mongodb_client::postgres_client_account_index::TokenSecondaryIndexEntry,
+        geyser_plugin_mongodb::{GeyserPluginMongoDBConfig, GeyserPluginMongoDbError},
     },
     chrono::Utc,
     crossbeam_channel::{bounded, Receiver, RecvTimeoutError, Sender},
     log::*,
     openssl::ssl::{SslConnector, SslFiletype, SslMethod},
-    postgres::{Client, NoTls, Statement},
-    postgres_client_block_metadata::DbBlockInfo,
-    postgres_client_transaction::LogTransactionRequest,
-    postgres_openssl::MakeTlsConnector,
+    mongodb::{options::{ClientOptions, Tls, TlsOptions},Client,bson::doc },
     solana_geyser_plugin_interface::geyser_plugin_interface::{
         GeyserPluginError, ReplicaAccountInfoV3, ReplicaBlockInfoV3, SlotStatus,
     },
