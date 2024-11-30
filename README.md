@@ -27,6 +27,12 @@ Data to be streamed and stored:
 -Include metadata for efficient queries
 
 ## Optimization
+
+
+## Architecture Diagrams of Accounts DB
+find inside ArchDiagrams floder
+
+
 - ### batch writes: buffer updates and batch write them
 - ### connection between the plugin interface and MongoDB (conncetion pool)
 - ###  event blocking: Avoid event blocking
