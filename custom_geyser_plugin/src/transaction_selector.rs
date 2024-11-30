@@ -79,6 +79,27 @@ impl TransactionSelector {
         }
         false
     }
+    //I believe this fn is more optimize than the one above due to avoiding dyn memory overhead
+    // pub fn is_transaction_selected<I>(
+    //     &self,
+    //     is_vote: bool,
+    //     mentioned_addresses: I,
+    // ) -> bool
+    // where
+    //     I: IntoIterator<Item = &Pubkey>,
+    // {
+    //     if !self.is_enabled() {
+    //         return false;
+    //     }
+    
+    //     if self.select_all_transactions || (self.select_all_vote_transactions && is_vote) {
+    //         return true;
+    //     }
+    
+    //     mentioned_addresses.into_iter().any(|address| {
+    //         self.mentioned_addresses.contains(address.as_ref())
+    //     })
+    // }
 
     /// Check if any transaction is of interest at all
     pub fn is_enabled(&self) -> bool {

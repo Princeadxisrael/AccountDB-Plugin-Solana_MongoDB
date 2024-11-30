@@ -16,7 +16,7 @@ crossbeam-channel = "0.5.7"
 log = "0.4.17"
 openssl = { version = "0.10.42" }
 
-serde = "1.0.188"
+serde = "1.0.215"
 futures="0.3.28"
 serde_derive = "1.0.145"
 serde_json = "1.0.85"
