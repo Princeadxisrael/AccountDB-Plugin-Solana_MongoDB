@@ -161,6 +161,24 @@ pub struct DbTransaction {
 pub struct LogTransactionRequest {
     pub transaction_info: DbTransaction,
 }
+
+impl From<&MessageAddressTableLookup> for DbTransactionMessageAddressTableLookup {
+    fn from(address_table_lookup: &MessageAddressTableLookup) -> Self {
+        Self {
+            account_key: address_table_lookup.account_key.as_ref().to_vec(),
+            writable_indexes: address_table_lookup
+                .writable_indexes
+                .iter()
+                .map(|idx| *idx as i16)
+                .collect(),
+            readonly_indexes: address_table_lookup
+                .readonly_indexes
+                .iter()
+                .map(|idx| *idx as i16)
+                .collect(),
+        }
+    }
+}
 struct MongodbClientWrapper {
     client: mongodb::Client,
     accounts_collection:mongodb::Collection<DbAccountInfo>,
