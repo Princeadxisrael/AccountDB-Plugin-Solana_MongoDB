@@ -140,6 +140,25 @@ pub struct DbLoadedMessageV0 {
     pub message: DbTransactionMessageV0,
     pub loaded_addresses: DbLoadedAddresses,
 }
+
+pub struct DbTransaction {
+    pub signature: Vec<u8>,
+    pub is_vote: bool,
+    pub slot: i64,
+    pub message_type: i16,
+    pub legacy_message: Option<DbTransactionMessage>,
+    pub v0_loaded_message: Option<DbLoadedMessageV0>,
+    pub message_hash: Vec<u8>,
+    pub meta: DbTransactionStatusMeta,
+    pub signatures: Vec<Vec<u8>>,
+    /// Useful for deciphering the order of transaction within a block
+    /// Given a slot, the transaction with a smaller write_version appears
+    /// before transactions with higher write_versions in a shred.
+    pub write_version: i64,
+    pub index: i64,
+}
+
+
 struct MongodbClientWrapper {
     client: mongodb::Client,
     accounts_collection:mongodb::Collection<DbAccountInfo>,
