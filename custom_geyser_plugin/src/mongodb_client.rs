@@ -1,8 +1,23 @@
 /// A concurrent implementation for writing accounts into the MongoDB in parallel.
 use {
-    crate::geyser_plugin_mongodb::{GeyserPluginMongoDBConfig, GeyserPluginMongoDbError}, chrono::Utc, crossbeam_channel::{bounded, Receiver, RecvTimeoutError, Sender}, log::*, mongodb::{bson::doc, options::{ClientOptions, Tls, TlsOptions}, Client }, openssl::ssl::{SslConnector, SslFiletype, SslMethod}, serde::{Deserialize, Serialize}, solana_geyser_plugin_interface::geyser_plugin_interface::{
+    crate::geyser_plugin_mongodb::{GeyserPluginMongoDBConfig, GeyserPluginMongoDbError}, 
+    chrono::Utc, 
+    crossbeam_channel::{bounded, Receiver, RecvTimeoutError, Sender}, 
+    log::*, 
+    mongodb::{bson::doc, options::{ClientOptions, Tls, TlsOptions}, Client }, 
+    openssl::ssl::{SslConnector, SslFiletype, SslMethod}, 
+    serde::{Deserialize, Serialize}, 
+    solana_geyser_plugin_interface::geyser_plugin_interface::{
         GeyserPluginError, ReplicaAccountInfoV3, ReplicaBlockInfoV3, SlotStatus,
-    }, solana_measure::measure::Measure, solana_metrics::*, solana_sdk::{instruction::Instruction, timing::AtomicInterval}, solana_transaction_status::TransactionStatus, std::{
+    }, 
+    solana_measure::measure::Measure, solana_metrics::*, 
+    solana_runtime::bank::RewardType,
+    solana_sdk::{instruction::{Instruction, CompiledInstruction}, 
+    timing::AtomicInterval, 
+    message::{v0::{self, LoadedAddresses, MessageAddressTableLookup}, 
+    Message,MessageHeader,SanitizedMessage}, transaction::TransactionError}, 
+    solana_transaction_status::TransactionStatus, 
+    std::{
         collections::HashSet,
         sync::{
             atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
