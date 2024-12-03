@@ -2,7 +2,7 @@
 use {
     crate::geyser_plugin_mongodb::{GeyserPluginMongoDBConfig, GeyserPluginMongoDbError}, chrono::Utc, crossbeam_channel::{bounded, Receiver, RecvTimeoutError, Sender}, log::*, mongodb::{bson::doc, options::{ClientOptions, Tls, TlsOptions}, Client }, openssl::ssl::{SslConnector, SslFiletype, SslMethod}, serde::{Deserialize, Serialize}, solana_geyser_plugin_interface::geyser_plugin_interface::{
         GeyserPluginError, ReplicaAccountInfoV3, ReplicaBlockInfoV3, SlotStatus,
-    }, solana_measure::measure::Measure, solana_metrics::*, solana_sdk::timing::AtomicInterval, std::{
+    }, solana_measure::measure::Measure, solana_metrics::*, solana_sdk::{instruction::Instruction, timing::AtomicInterval}, solana_transaction_status::TransactionStatus, std::{
         collections::HashSet,
         sync::{
             atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
@@ -50,15 +50,30 @@ struct MongodbClientWorker {
     is_startup_done: bool,
 }
 
-#[derive(Clone,Debug, Serialize, Deserialize)]
+#[derive(Clone,Debug)]
 pub struct SlotMetadata{
     pub slot: u64,
-    pub parent:Option<String>,
+    pub parent:Option<String>, //enables reconstruction of slot tree
     pub status: SlotStatus,
     pub blockhash:Option<String>,
-    pub leader:Option<u8>,
+    pub leader:Option<u8>, //None for orphaned slots
     pub timestamp:Option<u8>
 }
+
+#[derive(Clone,Debug, Serialize, Deserialize)]
+pub struct TransactionLog{
+    pub signature:String,
+    pub slot: u64,
+    pub status:TransactionStatus,
+    pub instructions: Vec<Instruction>,
+    pub logs: Vec<String>,
+    pub fee: u64,
+    pub pre_balances:Vec<u64>,
+    pub post_balances:Vec<u64>,
+    pub account:Vec<String>
+}
+
+
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct DbAccountInfo {
