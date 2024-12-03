@@ -1,4 +1,4 @@
-/// A concurrent implementation for writing accounts into the PostgreSQL in parallel.
+/// A concurrent implementation for writing accounts into the MongoDB in parallel.
 use {
     crate::{
         geyser_plugin_mongodb::{GeyserPluginMongoDBConfig, GeyserPluginMongoDbError},
@@ -37,29 +37,23 @@ const DEFAULT_PANIC_ON_DB_ERROR: bool = false;
 const DEFAULT_STORE_ACCOUNT_HISTORICAL_DATA: bool = false;
 
 struct MongodbClientWrapper {
-    client: Client,
-    update_account_stmt: Statement,
-    bulk_account_insert_stmt: Statement,
-    update_slot_with_parent_stmt: Statement,
-    update_slot_without_parent_stmt: Statement,
-    update_transaction_log_stmt: Statement,
-    update_block_metadata_stmt: Statement,
-    insert_account_audit_stmt: Option<Statement>,
-    insert_token_owner_index_stmt: Option<Statement>,
-    insert_token_mint_index_stmt: Option<Statement>,
-    bulk_insert_token_owner_index_stmt: Option<Statement>,
-    bulk_insert_token_mint_index_stmt: Option<Statement>,
+    client: mongodb::Client,
+    accounts_collection:mongodb::Collection<DbAccountInfo>,
+    slots_collection:mongodb::Collection<SlotMetadata>,
+    transactions_colection:mongodb::Collection<TransactionLog>,
+    token_owner_index_collection: Option<mongodb::Collection<TokenSecondaryIndexEntry>>,
+    token_mint_index_collection: Option<mongodb::Collection<TokenSecondaryIndexEntry>>,
 }
 
 pub struct SimpleMongoDbClient {
     batch_size: usize,
-    slots_at_startup: HashSet<u64>,
+    slots_at_startup: HashSet<u64>, //Hashset may consume sig memory if many slots are processed at startup. consider using a bitmap here?
     pending_account_updates: Vec<DbAccountInfo>,
     index_token_owner: bool,
     index_token_mint: bool,
     pending_token_owner_index: Vec<TokenSecondaryIndexEntry>,
     pending_token_mint_index: Vec<TokenSecondaryIndexEntry>,
-    client: Mutex<MongodbClientWrapper>,
+    client: tokio::sync::Mutex<MongodbClientWrapper>, //allow thread-safe access to client wrapper
 }
 
 struct MongodbClientWorker {
@@ -70,7 +64,7 @@ struct MongodbClientWorker {
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct DbAccountInfo {
-    pub pubkey: Vec<u8>,
+    pub pubkey: Vec<u8>, //using fixed-sized array, [u8; 32] for pubkeys may improve cache locality?
     pub lamports: i64,
     pub owner: Vec<u8>,
     pub executable: bool,
@@ -177,7 +171,7 @@ impl<'a> ReadableAccountInfo for ReplicaAccountInfoV3<'a> {
     }
 }
 
-pub trait PostgresClient {
+pub trait MongoDBClient {
     fn join(&mut self) -> thread::Result<()> {
         Ok(())
     }
@@ -207,3 +201,6 @@ pub trait PostgresClient {
     ) -> Result<(), GeyserPluginError>;
 }
 
+impl SimpleMongoDbClient {
+    
+}
