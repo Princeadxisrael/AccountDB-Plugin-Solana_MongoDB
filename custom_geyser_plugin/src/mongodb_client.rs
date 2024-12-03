@@ -158,7 +158,9 @@ pub struct DbTransaction {
     pub index: i64,
 }
 
-
+pub struct LogTransactionRequest {
+    pub transaction_info: DbTransaction,
+}
 struct MongodbClientWrapper {
     client: mongodb::Client,
     accounts_collection:mongodb::Collection<DbAccountInfo>,
