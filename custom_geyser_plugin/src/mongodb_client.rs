@@ -1,20 +1,8 @@
 /// A concurrent implementation for writing accounts into the MongoDB in parallel.
 use {
-    crate::{
-        geyser_plugin_mongodb::{GeyserPluginMongoDBConfig, GeyserPluginMongoDbError},
-    },
-    chrono::Utc,
-    crossbeam_channel::{bounded, Receiver, RecvTimeoutError, Sender},
-    log::*,
-    openssl::ssl::{SslConnector, SslFiletype, SslMethod},
-    mongodb::{options::{ClientOptions, Tls, TlsOptions},Client,bson::doc },
-    solana_geyser_plugin_interface::geyser_plugin_interface::{
+    crate::geyser_plugin_mongodb::{GeyserPluginMongoDBConfig, GeyserPluginMongoDbError}, chrono::Utc, crossbeam_channel::{bounded, Receiver, RecvTimeoutError, Sender}, log::*, mongodb::{bson::doc, options::{ClientOptions, Tls, TlsOptions}, Client }, openssl::ssl::{SslConnector, SslFiletype, SslMethod}, serde::{Deserialize, Serialize}, solana_geyser_plugin_interface::geyser_plugin_interface::{
         GeyserPluginError, ReplicaAccountInfoV3, ReplicaBlockInfoV3, SlotStatus,
-    },
-    solana_measure::measure::Measure,
-    solana_metrics::*,
-    solana_sdk::timing::AtomicInterval,
-    std::{
+    }, solana_measure::measure::Measure, solana_metrics::*, solana_sdk::timing::AtomicInterval, std::{
         collections::HashSet,
         sync::{
             atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
@@ -60,6 +48,16 @@ struct MongodbClientWorker {
     client: SimpleMongoDbClient,
     /// Indicating if accounts notification during startup is done.
     is_startup_done: bool,
+}
+
+#[derive(Clone,Debug, Serialize, Deserialize)]
+pub struct SlotMetadata{
+    pub slot: u64,
+    pub parent:Option<String>,
+    pub status: SlotStatus,
+    pub blockhash:Option<String>,
+    pub leader:Option<u8>,
+    pub timestamp:Option<u8>
 }
 
 #[derive(Clone, PartialEq, Debug)]
