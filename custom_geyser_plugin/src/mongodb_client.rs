@@ -24,6 +24,7 @@ const ACCOUNT_COLUMN_COUNT: usize = 10;
 const DEFAULT_PANIC_ON_DB_ERROR: bool = false;
 const DEFAULT_STORE_ACCOUNT_HISTORICAL_DATA: bool = false;
 
+//MONGODB_CLIENT_ACCOUNT_INDEX
 const TOKEN_INDEX_COLUMN_COUNT: usize = 3;
 /// Struct for the secondary index for both token account's owner and mint index,
 pub struct TokenSecondaryIndexEntry {
@@ -39,6 +40,106 @@ pub struct TokenSecondaryIndexEntry {
 }
 
 
+//MONGODB_CLIENT_TRANSACTION
+const MAX_TRANSACTION_STATUS_LEN: usize = 256;
+
+#[derive(Clone, Debug, Serialize,Deserialize)]
+pub struct DbCompiledInstruction {
+    pub program_id_index: i16,
+    pub accounts: Vec<i16>,
+    pub data: Vec<u8>,
+}
+
+#[derive(Clone, Debug, Serialize,Deserialize)]
+
+pub struct DbInnerInstructions {
+    pub index: i16,
+    pub instructions: Vec<DbCompiledInstruction>,
+}
+
+#[derive(Clone, Debug, Serialize,Deserialize)]
+pub struct DbTransactionTokenBalance {
+    pub account_index: i16,
+    pub mint: String,
+    pub ui_token_amount: Option<f64>,
+    pub owner: String,
+}
+
+#[derive(Clone, Debug, Eq, Serialize,Deserialize, PartialEq)]
+pub enum DbRewardType {
+    Fee,
+    Rent,
+    Staking,
+    Voting,
+}
+
+
+#[derive(Clone, Debug, Serialize,Deserialize)]
+pub struct DbReward {
+    pub pubkey: String,
+    pub lamports: i64,
+    pub post_balance: i64,
+    pub reward_type: Option<DbRewardType>,
+    pub commission: Option<i16>,
+}
+
+
+#[derive(Clone, Debug, Serialize,Deserialize)]
+pub struct DbTransactionStatusMeta {
+    pub error: Option<DbTransactionError>,
+    pub fee: i64,
+    pub pre_balances: Vec<i64>,
+    pub post_balances: Vec<i64>,
+    pub inner_instructions: Option<Vec<DbInnerInstructions>>,
+    pub log_messages: Option<Vec<String>>,
+    pub pre_token_balances: Option<Vec<DbTransactionTokenBalance>>,
+    pub post_token_balances: Option<Vec<DbTransactionTokenBalance>>,
+    pub rewards: Option<Vec<DbReward>>,
+}
+
+
+#[derive(Clone, Debug, Serialize,Deserialize)]
+pub struct DbTransactionMessageHeader {
+    pub num_required_signatures: i16,
+    pub num_readonly_signed_accounts: i16,
+    pub num_readonly_unsigned_accounts: i16,
+}
+
+#[derive(Clone, Debug, Serialize,Deserialize)]
+pub struct DbTransactionMessage {
+    pub header: DbTransactionMessageHeader,
+    pub account_keys: Vec<Vec<u8>>,
+    pub recent_blockhash: Vec<u8>,
+    pub instructions: Vec<DbCompiledInstruction>,
+}
+
+#[derive(Clone, Debug, Serialize,Deserialize)]
+pub struct DbTransactionMessageAddressTableLookup {
+    pub account_key: Vec<u8>,
+    pub writable_indexes: Vec<i16>,
+    pub readonly_indexes: Vec<i16>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct DbTransactionMessageV0 {
+    pub header: DbTransactionMessageHeader,
+    pub account_keys: Vec<Vec<u8>>,
+    pub recent_blockhash: Vec<u8>,
+    pub instructions: Vec<DbCompiledInstruction>,
+    pub address_table_lookups: Vec<DbTransactionMessageAddressTableLookup>,
+}
+
+#[derive(Clone, Debug, Serialize,Deserialize)]
+pub struct DbLoadedAddresses {
+    pub writable: Vec<Vec<u8>>,
+    pub readonly: Vec<Vec<u8>>,
+}
+
+#[derive(Clone, Debug, Serialize,Deserialize)]
+pub struct DbLoadedMessageV0 {
+    pub message: DbTransactionMessageV0,
+    pub loaded_addresses: DbLoadedAddresses,
+}
 struct MongodbClientWrapper {
     client: mongodb::Client,
     accounts_collection:mongodb::Collection<DbAccountInfo>,
