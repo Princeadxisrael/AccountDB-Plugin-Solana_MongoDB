@@ -436,6 +436,42 @@ pub struct DbTransactionError {
     error_detail: Option<String>,
 }
 
+fn get_transaction_error(result: &Result<(), TransactionError>) -> Option<DbTransactionError> {
+    if result.is_ok() {
+        return None;
+    }
+
+    let error = result.as_ref().err().unwrap();
+    Some(DbTransactionError {
+        error_code: DbTransactionErrorCode::from(error),
+        error_detail: {
+            if let TransactionError::InstructionError(idx, instruction_error) = error {
+                let mut error_detail = format!(
+                    "InstructionError: idx ({}), error: ({})",
+                    idx, instruction_error
+                );
+                if error_detail.len() > MAX_TRANSACTION_STATUS_LEN {
+                    error_detail = error_detail
+                        .to_string()
+                        .split_off(MAX_TRANSACTION_STATUS_LEN);
+                }
+                Some(error_detail)
+            } else {
+                None
+            }
+        },
+    })
+}
+//Sample error format
+// {
+//     "error_code": "instruction_error",
+//     "details": {
+//         "instruction_index": 2,
+//         "error_code": "InvalidArgument"
+//     }
+// }
+
+
 struct MongodbClientWrapper {
     client: mongodb::Client,
     accounts_collection:mongodb::Collection<DbAccountInfo>,
