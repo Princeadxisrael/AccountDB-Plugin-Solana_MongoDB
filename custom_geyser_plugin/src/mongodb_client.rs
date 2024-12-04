@@ -12,10 +12,8 @@ use {
     }, 
     solana_measure::measure::Measure, solana_metrics::*, 
     solana_runtime::bank::RewardType,
-    solana_sdk::{instruction::{Instruction, CompiledInstruction}, 
-    timing::AtomicInterval, 
-    message::{v0::{self, LoadedAddresses, MessageAddressTableLookup}, 
-    Message,MessageHeader,SanitizedMessage}, transaction::TransactionError}, 
+    solana_sdk::{instruction::{CompiledInstruction, Instruction}, message::{v0::{self, LoadedAddresses, MessageAddressTableLookup}, 
+    Message,MessageHeader,SanitizedMessage}, pubkey, timing::AtomicInterval, transaction::TransactionError}, 
     solana_transaction_status::TransactionStatus, 
     std::{
         collections::HashSet,
@@ -194,6 +192,30 @@ impl From<&MessageAddressTableLookup> for DbTransactionMessageAddressTableLookup
         }
     }
 }
+
+impl From <&LoadedAddresses> for DbLoadedAddresses{
+    fn from(loaded_addresses: &LoadedAddresses) -> Self {
+        Self{
+            writable: loaded_addresses.writable.iter()
+            .map(|pubkey| pubkey.as_ref().to_vec())
+            .collect(),
+            readonly: loaded_addresses.readonly.iter().
+            map(|pubkey|pubkey.as_ref().to_vec())
+            .collect()
+        }
+    }
+}
+
+impl From<&MessageHeader> for DbTransactionMessageHeader{
+    fn from(header: &MessageHeader) -> Self {
+        Self{
+            num_required_signatures:header.num_required_signatures as i16,
+            num_readonly_signed_accounts:header.num_readonly_signed_accounts as i16,
+            num_readonly_unsigned_accounts:header.num_readonly_unsigned_accounts as i16
+        }
+    }
+}
+
 struct MongodbClientWrapper {
     client: mongodb::Client,
     accounts_collection:mongodb::Collection<DbAccountInfo>,
