@@ -321,6 +321,112 @@ impl From<&Reward> for DbReward {
         }
     }
 }
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub enum DbTransactionErrorCode {
+    AccountInUse,
+    AccountLoadedTwice,
+    AccountNotFound,
+    ProgramAccountNotFound,
+    InsufficientFundsForFee,
+    InvalidAccountForFee,
+    AlreadyProcessed,
+    BlockhashNotFound,
+    InstructionError,
+    CallChainTooDeep,
+    MissingSignatureForFee,
+    InvalidAccountIndex,
+    SignatureFailure,
+    InvalidProgramForExecution,
+    SanitizeFailure,
+    ClusterMaintenance,
+    AccountBorrowOutstanding,
+    WouldExceedMaxAccountCostLimit,
+    WouldExceedMaxBlockCostLimit,
+    UnsupportedVersion,
+    InvalidWritableAccount,
+    WouldExceedMaxAccountDataCostLimit,
+    TooManyAccountLocks,
+    AddressLookupTableNotFound,
+    InvalidAddressLookupTableOwner,
+    InvalidAddressLookupTableData,
+    InvalidAddressLookupTableIndex,
+    InvalidRentPayingAccount,
+    WouldExceedMaxVoteCostLimit,
+    WouldExceedAccountDataBlockLimit,
+    WouldExceedAccountDataTotalLimit,
+    DuplicateInstruction,
+    InsufficientFundsForRent,
+    MaxLoadedAccountsDataSizeExceeded,
+    InvalidLoadedAccountsDataSizeLimit,
+    ResanitizationNeeded,
+    UnbalancedTransaction,
+    ProgramExecutionTemporarilyRestricted,
+}
+
+impl From<&TransactionError> for DbTransactionErrorCode {
+    fn from(err: &TransactionError) -> Self {
+        match err {
+            TransactionError::AccountInUse => Self::AccountInUse,
+            TransactionError::AccountLoadedTwice => Self::AccountLoadedTwice,
+            TransactionError::AccountNotFound => Self::AccountNotFound,
+            TransactionError::ProgramAccountNotFound => Self::ProgramAccountNotFound,
+            TransactionError::InsufficientFundsForFee => Self::InsufficientFundsForFee,
+            TransactionError::InvalidAccountForFee => Self::InvalidAccountForFee,
+            TransactionError::AlreadyProcessed => Self::AlreadyProcessed,
+            TransactionError::BlockhashNotFound => Self::BlockhashNotFound,
+            TransactionError::InstructionError(_idx, _error) => Self::InstructionError,
+            TransactionError::CallChainTooDeep => Self::CallChainTooDeep,
+            TransactionError::MissingSignatureForFee => Self::MissingSignatureForFee,
+            TransactionError::InvalidAccountIndex => Self::InvalidAccountIndex,
+            TransactionError::SignatureFailure => Self::SignatureFailure,
+            TransactionError::InvalidProgramForExecution => Self::InvalidProgramForExecution,
+            TransactionError::SanitizeFailure => Self::SanitizeFailure,
+            TransactionError::ClusterMaintenance => Self::ClusterMaintenance,
+            TransactionError::AccountBorrowOutstanding => Self::AccountBorrowOutstanding,
+            TransactionError::WouldExceedMaxAccountCostLimit => {
+                Self::WouldExceedMaxAccountCostLimit
+            }
+            TransactionError::WouldExceedMaxBlockCostLimit => Self::WouldExceedMaxBlockCostLimit,
+            TransactionError::UnsupportedVersion => Self::UnsupportedVersion,
+            TransactionError::InvalidWritableAccount => Self::InvalidWritableAccount,
+            TransactionError::WouldExceedAccountDataBlockLimit => {
+                Self::WouldExceedAccountDataBlockLimit
+            }
+            TransactionError::WouldExceedAccountDataTotalLimit => {
+                Self::WouldExceedAccountDataTotalLimit
+            }
+            TransactionError::TooManyAccountLocks => Self::TooManyAccountLocks,
+            TransactionError::AddressLookupTableNotFound => Self::AddressLookupTableNotFound,
+            TransactionError::InvalidAddressLookupTableOwner => {
+                Self::InvalidAddressLookupTableOwner
+            }
+            TransactionError::InvalidAddressLookupTableData => Self::InvalidAddressLookupTableData,
+            TransactionError::InvalidAddressLookupTableIndex => {
+                Self::InvalidAddressLookupTableIndex
+            }
+            TransactionError::InvalidRentPayingAccount => Self::InvalidRentPayingAccount,
+            TransactionError::WouldExceedMaxVoteCostLimit => Self::WouldExceedMaxVoteCostLimit,
+            TransactionError::DuplicateInstruction(_) => Self::DuplicateInstruction,
+            TransactionError::InsufficientFundsForRent { account_index: _ } => {
+                Self::InsufficientFundsForRent
+            }
+            TransactionError::MaxLoadedAccountsDataSizeExceeded => {
+                Self::MaxLoadedAccountsDataSizeExceeded
+            }
+            TransactionError::InvalidLoadedAccountsDataSizeLimit => {
+                Self::InvalidLoadedAccountsDataSizeLimit
+            }
+            TransactionError::ResanitizationNeeded => Self::ResanitizationNeeded,
+            TransactionError::UnbalancedTransaction => Self::UnbalancedTransaction,
+            TransactionError::ProgramExecutionTemporarilyRestricted { account_index: _ } => {
+                Self::ProgramExecutionTemporarilyRestricted
+            }
+        }
+        
+    }
+}
+
 struct MongodbClientWrapper {
     client: mongodb::Client,
     accounts_collection:mongodb::Collection<DbAccountInfo>,
