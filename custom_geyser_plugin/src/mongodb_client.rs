@@ -12,7 +12,7 @@ use {
     }, 
     solana_measure::measure::Measure, solana_metrics::*, 
     solana_runtime::bank::RewardType,
-    solana_sdk::{instruction::{CompiledInstruction, Instruction}, message::{v0::{self, LoadedAddresses, MessageAddressTableLookup}, 
+    solana_sdk::{address_lookup_table::instruction, instruction::{CompiledInstruction, Instruction}, message::{v0::{self, LoadedAddresses, MessageAddressTableLookup}, 
     Message,MessageHeader,SanitizedMessage}, pubkey, timing::AtomicInterval, transaction::TransactionError}, 
     solana_transaction_status::TransactionStatus, 
     std::{
@@ -207,13 +207,25 @@ impl From <&LoadedAddresses> for DbLoadedAddresses{
 }
 
 impl From<&MessageHeader> for DbTransactionMessageHeader{
-    fn from(header: &MessageHeader) -> Self {
+    fn from(message_header: &MessageHeader) -> Self {
         Self{
-            num_required_signatures:header.num_required_signatures as i16,
-            num_readonly_signed_accounts:header.num_readonly_signed_accounts as i16,
-            num_readonly_unsigned_accounts:header.num_readonly_unsigned_accounts as i16
+            num_required_signatures:message_header.num_required_signatures as i16,
+            num_readonly_signed_accounts:message_header.num_readonly_signed_accounts as i16,
+            num_readonly_unsigned_accounts:message_header.num_readonly_unsigned_accounts as i16
         }
     }
+}
+
+impl From<&DbCompiledInstruction> for DbCompiledInstruction {
+    fn from(compiled_instruction: &DbCompiledInstruction) -> Self {
+        Self { program_id_index: compiled_instruction.program_id_index as i16, 
+            accounts: compiled_instruction.accounts
+            .iter().map(|account_idx| *account_idx as i16).
+            collect(), 
+            data: compiled_instruction.data.clone()
+        }
+    }
+    
 }
 
 struct MongodbClientWrapper {
