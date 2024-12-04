@@ -216,7 +216,7 @@ impl From<&MessageHeader> for DbTransactionMessageHeader{
     }
 }
 
-impl From<&DbCompiledInstruction> for DbCompiledInstruction {
+impl From<&CompiledInstruction> for DbCompiledInstruction {
     fn from(compiled_instruction: &DbCompiledInstruction) -> Self {
         Self { program_id_index: compiled_instruction.program_id_index as i16, 
             accounts: compiled_instruction.accounts
@@ -226,6 +226,21 @@ impl From<&DbCompiledInstruction> for DbCompiledInstruction {
         }
     }
     
+}
+
+impl From<&Message> for DbTransactionMessage{
+    fn from(message: &Message) -> Self {
+        Self{
+            header:DbTransactionMessageHeader::from(&message.header),
+            account_keys:message.account_keys.iter().map(|key|key.as_ref().to_vec()).collect(),
+            recent_blockhash:message.recent_blockhash.as_ref().to_vec(),
+            instructions:message
+            .instructions
+            .iter()
+            .map(DbCompiledInstruction::from)
+            .collect(),
+        }
+    }
 }
 
 struct MongodbClientWrapper {
