@@ -14,7 +14,7 @@ use {
     solana_runtime::bank::RewardType,
     solana_sdk::{address_lookup_table::instruction, instruction::{CompiledInstruction, Instruction}, message::{v0::{self, LoadedAddresses, MessageAddressTableLookup}, 
     Message,MessageHeader,SanitizedMessage}, pubkey, timing::AtomicInterval, transaction::TransactionError}, 
-    solana_transaction_status::TransactionStatus, 
+    solana_transaction_status::{InnerInstructions, Reward, TransactionStatus}, 
     std::{
         collections::HashSet,
         sync::{
@@ -243,6 +243,84 @@ impl From<&Message> for DbTransactionMessage{
     }
 }
 
+impl From<&v0::Message> for DbTransactionMessageV0 {
+    fn from(message: &v0::Message) -> Self {
+        Self {
+            header: DbTransactionMessageHeader::from(&message.header),
+            account_keys: message
+                .account_keys
+                .iter()
+                .map(|key| key.as_ref().to_vec())
+                .collect(),
+            recent_blockhash: message.recent_blockhash.as_ref().to_vec(),
+            instructions: message
+                .instructions
+                .iter()
+                .map(DbCompiledInstruction::from)
+                .collect(),
+            address_table_lookups: message
+                .address_table_lookups
+                .iter()
+                .map(DbTransactionMessageAddressTableLookup::from)
+                .collect(),
+        }
+    }
+}
+
+impl<'a> From<&v0::LoadedMessage<'a>> for DbLoadedMessageV0 {
+    fn from(message: &v0::LoadedMessage) -> Self {
+        Self {
+            message: DbTransactionMessageV0::from(&message.message as &v0::Message),
+            loaded_addresses: DbLoadedAddresses::from(
+                &message.loaded_addresses as &LoadedAddresses,
+            ),
+        }
+    }
+}
+
+
+impl From<&InnerInstructions> for DbInnerInstructions {
+    fn from(instructions: &InnerInstructions) -> Self {
+        Self {
+            index: instructions.index as i16,
+            instructions: instructions
+                .instructions
+                .iter()
+                .map(|instruction| DbCompiledInstruction::from(&instruction.instruction))
+                .collect(),
+        }
+    }
+}
+
+impl From<&RewardType> for DbRewardType {
+    fn from(reward_type: &RewardType) -> Self {
+        match reward_type {
+            RewardType::Fee => Self::Fee,
+            RewardType::Rent => Self::Rent,
+            RewardType::Staking => Self::Staking,
+            RewardType::Voting => Self::Voting,
+        }
+    }
+}
+
+fn get_reward_type(reward:&Option<RewardType>)->Option<DbRewardType>{
+    reward.as_ref().map(DbRewardType::from)
+}
+
+impl From<&Reward> for DbReward {
+    fn from(reward: &Reward) -> Self {
+        Self {
+            pubkey: reward.pubkey.clone(),
+            lamports: reward.lamports,
+            post_balance: reward.post_balance as i64,
+            reward_type: get_reward_type(&reward.reward_type),
+            commission: reward
+                .commission
+                .as_ref()
+                .map(|commission| *commission as i16),
+        }
+    }
+}
 struct MongodbClientWrapper {
     client: mongodb::Client,
     accounts_collection:mongodb::Collection<DbAccountInfo>,
