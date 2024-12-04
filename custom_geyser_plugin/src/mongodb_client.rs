@@ -217,7 +217,7 @@ impl From<&MessageHeader> for DbTransactionMessageHeader{
 }
 
 impl From<&CompiledInstruction> for DbCompiledInstruction {
-    fn from(compiled_instruction: &DbCompiledInstruction) -> Self {
+    fn from(compiled_instruction: &CompiledInstruction) -> Self {
         Self { program_id_index: compiled_instruction.program_id_index as i16, 
             accounts: compiled_instruction.accounts
             .iter().map(|account_idx| *account_idx as i16).
@@ -323,6 +323,7 @@ impl From<&Reward> for DbReward {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum DbTransactionErrorCode {
     AccountInUse,
     AccountLoadedTwice,
@@ -362,6 +363,7 @@ pub enum DbTransactionErrorCode {
     ResanitizationNeeded,
     UnbalancedTransaction,
     ProgramExecutionTemporarilyRestricted,
+    Other(String)
 }
 
 impl From<&TransactionError> for DbTransactionErrorCode {
@@ -425,6 +427,13 @@ impl From<&TransactionError> for DbTransactionErrorCode {
         }
         
     }
+}
+
+#[derive(Clone, Debug, Eq, Serialize,Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub struct DbTransactionError {
+    error_code: DbTransactionErrorCode,
+    error_detail: Option<String>,
 }
 
 struct MongodbClientWrapper {
