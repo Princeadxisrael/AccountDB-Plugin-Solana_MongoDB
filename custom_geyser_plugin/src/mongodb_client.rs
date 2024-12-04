@@ -14,7 +14,7 @@ use {
     solana_runtime::bank::RewardType,
     solana_sdk::{address_lookup_table::instruction, instruction::{CompiledInstruction, Instruction}, message::{v0::{self, LoadedAddresses, MessageAddressTableLookup}, 
     Message,MessageHeader,SanitizedMessage}, pubkey, timing::AtomicInterval, transaction::TransactionError}, 
-    solana_transaction_status::{InnerInstructions, Reward, TransactionStatus}, 
+    solana_transaction_status::{InnerInstructions, Reward, TransactionStatus, TransactionStatusMeta,TransactionTokenBalance}, 
     std::{
         collections::HashSet,
         sync::{
@@ -470,6 +470,18 @@ fn get_transaction_error(result: &Result<(), TransactionError>) -> Option<DbTran
 //         "error_code": "InvalidArgument"
 //     }
 // }
+
+impl From<&TransactionTokenBalance> for DbTransactionTokenBalance {
+    fn from(token_balance: &TransactionTokenBalance) -> Self {
+        Self {
+            account_index: token_balance.account_index as i16,
+            mint: token_balance.mint.clone(),
+            ui_token_amount: token_balance.ui_token_amount.ui_amount,
+            owner: token_balance.owner.clone(),
+        }
+    }
+}
+
 
 
 struct MongodbClientWrapper {
