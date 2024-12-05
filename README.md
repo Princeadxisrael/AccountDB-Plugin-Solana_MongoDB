@@ -1,4 +1,4 @@
-# Geyser-Plugin-Solana_MongoBD
+# AccountDB-Plugin-Solana_MongoDB
 The Geyser plugin is an optimized mechanism for streaming real-time transaction, block, and account data from the Solana runtime into external data systems to bypass RPC servers, reducing latency and ensuring high-throughput data delivery.Geyser plugins allow developers/infra providers to stream real-time data such as accounts(state), blocks, slots, and transactions.Given that Solana is an eventually consistent poorly indexed database with complicated write semantics that aims at high throughput read and write on multiple transaction isolation levels, GP extends Solana’s functionality by enabling applications to consume on-chain data directly instead of repeatedly querying rpc nodes.
 
 # Purpose
