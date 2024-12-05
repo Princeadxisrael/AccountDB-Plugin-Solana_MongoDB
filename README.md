@@ -1,10 +1,8 @@
 # Custom-Geyser-Plugin-Solana
-Geyser plugins allow developers/infra providers to stream real-time data such as accounts(state), blocks, slots, and transactions. Solana is an eventually consistent poorly indexed database with complicated write semantics that aims at high throughput read and write on multiple transaction isolation levels. GP extends Solana’s functions by enabling applications to consume on-chain data directly instead of repeatedly querying rpc nodes.
+The Geyser plugin is an optimized mechanism for streaming real-time transaction, block, and account data from the Solana runtime into external data systems to bypass RPC servers, reducing latency and ensuring high-throughput data delivery.Geyser plugins allow developers/infra providers to stream real-time data such as accounts(state), blocks, slots, and transactions.Given that Solana is an eventually consistent poorly indexed database with complicated write semantics that aims at high throughput read and write on multiple transaction isolation levels, GP extends Solana’s functionality by enabling applications to consume on-chain data directly instead of repeatedly querying rpc nodes.
 
 # Purpose
-Implement and benchmark test the geyser plugin implementation with MongoDB as its distributed database
-
-Who are Users? 
+Build a Solana Geyser plugin with MongoDB to integrate Solana's real-time data streaming capabilities with MongoDB's flexible document-oriented database and perform benchmark tests against existing solutions.
 
 # Data Model Designs?
 - Transactions -> `transaction` collection
@@ -21,9 +19,11 @@ indexing by public keys
 Data to be streamed and stored:
 -Transactions
 -Accounts
+-Block data
+-Slots
 
 ## Data transformation
--Serialize binary data to JSON
+-Serialize binary data to BSON 
 -Include metadata for efficient queries
 
 ## Optimization
