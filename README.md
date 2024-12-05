@@ -17,10 +17,10 @@ indexing by public keys
 # Data Processing
 ## filter data:
 Data to be streamed and stored:
--Transactions
--Accounts
--Block data
--Slots
+- Transactions
+- Accounts
+- Block data
+- Slots
 
 ## Data transformation
 -Serialize binary data to BSON 
@@ -31,4 +31,11 @@ Data to be streamed and stored:
 - ### connection between the plugin interface and MongoDB (conncetion pool)
 - ###  event blocking: Avoid event blocking
 - ### Data retention: implement TTL or periodic pruning to manage storage
+- ### Achieve snapshot isolation and consistency through MongoDB transactions, sharding, columnar compression, densification, deletes, and gap-filling for time series collections.
+- ### Benchmark test its read performance against existing implementations.
+- ### Benchmark test its write performance against existing implementations.
+
+
+
+
 
