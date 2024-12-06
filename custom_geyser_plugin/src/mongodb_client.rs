@@ -482,7 +482,30 @@ impl From<&TransactionTokenBalance> for DbTransactionTokenBalance {
     }
 }
 
-
+impl From <&TransactionStatusMeta> for DbTransactionStatusMeta{
+    fn from(meta: &TransactionStatusMeta) -> Self {
+        Self{
+            error: get_transaction_error(&meta.status),
+            fee:meta.fee as i16,
+            pre_balances:meta.pre_balances.iter().map(|balance| *balance as i64).collect(),
+            post_balances:meta.post_balances.iter().map(|balance| *balance as i64).collect(),
+            inner_instructions:meta.inner_instructions.as_ref().map(|instructions| instructions.iter().map(DbInnerInstructions::from).collect()),
+            log_messages:meta.log_messages.clone(),
+            pre_token_balances:meta.pre_token_balances.as_ref().map(|balances| {balances
+                .iter()
+                .map(DbTransactionTokenBalance::from)
+                .collect()}),
+            post_token_balances:meta.post_token_balances.as_ref().map(|balances| {balances
+                .iter()
+                .map(DbTransactionTokenBalance::from)
+                .collect()}),
+            rewards:meta.rewards.as_ref().map(|rewards| {rewards
+                .iter()
+                .map(DbReward::from)
+                .collect()})
+        }
+    }
+}
 
 struct MongodbClientWrapper {
     client: mongodb::Client,
