@@ -8,7 +8,7 @@ use {
     openssl::ssl::{SslConnector, SslFiletype, SslMethod}, 
     serde::{Deserialize, Serialize}, 
     solana_geyser_plugin_interface::geyser_plugin_interface::{
-        GeyserPluginError, ReplicaAccountInfoV3, ReplicaBlockInfoV3, SlotStatus,
+        GeyserPluginError, ReplicaTransactionInfoV2,ReplicaAccountInfoV3, ReplicaBlockInfoV3, SlotStatus,
     }, 
     solana_measure::measure::Measure, solana_metrics::*, 
     solana_runtime::bank::RewardType,
@@ -486,7 +486,7 @@ impl From <&TransactionStatusMeta> for DbTransactionStatusMeta{
     fn from(meta: &TransactionStatusMeta) -> Self {
         Self{
             error: get_transaction_error(&meta.status),
-            fee:meta.fee as i16,
+            fee:meta.fee as i64,
             pre_balances:meta.pre_balances.iter().map(|balance| *balance as i64).collect(),
             post_balances:meta.post_balances.iter().map(|balance| *balance as i64).collect(),
             inner_instructions:meta.inner_instructions.as_ref().map(|instructions| instructions.iter().map(DbInnerInstructions::from).collect()),
@@ -507,6 +507,49 @@ impl From <&TransactionStatusMeta> for DbTransactionStatusMeta{
     }
 }
 
+
+fn build_db_transaction(
+    slot: u64,
+    transaction_info: &ReplicaTransactionInfoV2,
+    transaction_write_version: u64,
+) -> DbTransaction {
+    DbTransaction {
+        signature: transaction_info.signature.as_ref().to_vec(),
+        is_vote: transaction_info.is_vote,
+        slot: slot as i64,
+        message_type: match transaction_info.transaction.message() {
+            SanitizedMessage::Legacy(_) => 0,
+            SanitizedMessage::V0(_) => 1,
+        },
+        legacy_message: match transaction_info.transaction.message() {
+            SanitizedMessage::Legacy(legacy_message) => {
+                Some(DbTransactionMessage::from(legacy_message.message.as_ref()))
+            }
+            _ => None,
+        },
+        v0_loaded_message: match transaction_info.transaction.message() {
+            SanitizedMessage::V0(loaded_message) => Some(DbLoadedMessageV0::from(loaded_message)),
+            _ => None,
+        },
+        signatures: transaction_info
+            .transaction
+            .signatures()
+            .iter()
+            .map(|signature| signature.as_ref().to_vec())
+            .collect(),
+        message_hash: transaction_info
+            .transaction
+            .message_hash()
+            .as_ref()
+            .to_vec(),
+        meta: DbTransactionStatusMeta::from(transaction_info.transaction_status_meta),
+        write_version: transaction_write_version as i64,
+        index: transaction_info.index as i64,
+    }
+}
+
+
+//MongoDB_CLIENT
 struct MongodbClientWrapper {
     client: mongodb::Client,
     accounts_collection:mongodb::Collection<DbAccountInfo>,
