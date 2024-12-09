@@ -4,11 +4,11 @@ use {
     chrono::Utc, 
     crossbeam_channel::{bounded, Receiver, RecvTimeoutError, Sender}, 
     log::*, 
-    mongodb::{bson::doc, options::{ClientOptions, Tls, TlsOptions}, Client }, 
+    mongodb::{bson::doc, options::{ClientOptions, Tls, TlsOptions}, Client}, 
     openssl::ssl::{SslConnector, SslFiletype, SslMethod}, 
     serde::{Deserialize, Serialize}, 
     solana_geyser_plugin_interface::geyser_plugin_interface::{
-        GeyserPluginError, ReplicaTransactionInfoV2,ReplicaAccountInfoV3, ReplicaBlockInfoV3, SlotStatus,
+        GeyserPluginError, ReplicaAccountInfoV3, ReplicaBlockInfoV3, ReplicaTransactionInfoV2, SlotStatus
     }, 
     solana_measure::measure::Measure, solana_metrics::*, 
     solana_runtime::bank::RewardType,
@@ -16,13 +16,10 @@ use {
     Message,MessageHeader,SanitizedMessage}, pubkey, timing::AtomicInterval, transaction::TransactionError}, 
     solana_transaction_status::{InnerInstructions, Reward, TransactionStatus, TransactionStatusMeta,TransactionTokenBalance}, 
     std::{
-        collections::HashSet,
-        sync::{
+        collections::HashSet, result, sync::{
             atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
             Arc, Mutex,
-        },
-        thread::{self, sleep, Builder, JoinHandle},
-        time::Duration,
+        }, thread::{self, sleep, Builder, JoinHandle}, time::Duration
     }
 };
 
@@ -507,7 +504,7 @@ impl From <&TransactionStatusMeta> for DbTransactionStatusMeta{
     }
 }
 
-
+//constructs the transaction database
 fn build_db_transaction(
     slot: u64,
     transaction_info: &ReplicaTransactionInfoV2,
@@ -550,6 +547,8 @@ fn build_db_transaction(
 
 
 //MongoDB_CLIENT
+
+///Wraps MongoDB client connection and prepared statements
 struct MongodbClientWrapper {
     client: mongodb::Client,
     accounts_collection:mongodb::Collection<DbAccountInfo>,
@@ -559,6 +558,7 @@ struct MongodbClientWrapper {
     token_mint_index_collection: Option<mongodb::Collection<TokenSecondaryIndexEntry>>,
 }
 
+///Handles pending updates, config options, index management
 pub struct SimpleMongoDbClient {
     batch_size: usize,
     slots_at_startup: HashSet<u64>, //Hashset may consume sig memory if many slots are processed at startup. consider using a bitmap here?
@@ -570,6 +570,7 @@ pub struct SimpleMongoDbClient {
     client: tokio::sync::Mutex<MongodbClientWrapper>, //allow thread-safe access to client wrapper
 }
 
+///Defines worker logic ad tracks startup state
 struct MongodbClientWorker {
     client: SimpleMongoDbClient,
     /// Indicating if accounts notification during startup is done.
@@ -741,5 +742,118 @@ pub trait MongoDBClient {
 }
 
 impl SimpleMongoDbClient {
-    
+    fn connect_to_db(config: &GeyserPluginMongoDBConfig)->Result<Client, GeyserPluginError>{
+        let port=config.port.unwrap_or(DEFAULT_MONGO_DB_PORT);
+        let connection_str= if let Some(connection_str)= &config.connection_str{
+            connection_str.clone()
+        }else{
+            if config.host.is_none() || config.user.is_none(){
+                let msg = format!(
+                    "\"connection_str\": {:?}, or \"host\": {:?} \"user\": {:?} must be specified",
+                    config.connection_str, config.host, config.user
+                );
+                return Err(GeyserPluginError::Custom(Box::new(
+                    GeyserPluginMongoDbError::ConfigurationError { msg },
+
+                )))
+            }
+            format!(
+                "host={} user={} port={}",
+                config.host.as_ref().unwrap(),
+                config.user.as_ref().unwrap(),
+                port
+            )
+        };
+        // Configure MongoDB client options
+    let mut client_options = match ClientOptions::parse(&connection_str) {
+        Ok(options) => options,
+        Err(err) => {
+            let msg = format!(
+                "Failed to parse MongoDB connection string: {:?}. Error: {:?}",
+                connection_str, err
+            );
+            return Err(GeyserPluginError::Custom(Box::new(
+                GeyserPluginMongoDbError::ConfigurationError { msg },
+            )));
+        }
+    };
+
+          // Configure TLS if use_ssl is enabled
+    if let Some(true) = config.use_ssl {
+        if config.server_ca.is_none() || config.client_cert.is_none() || config.client_key.is_none() {
+            let missing_fields: Vec<&str> = [
+                ("server_ca", config.server_ca.is_none()),
+                ("client_cert", config.client_cert.is_none()),
+                ("client_key", config.client_key.is_none()),
+            ]
+            .iter()
+            .filter(|(_, missing)| *missing)
+            .map(|(field, _)| *field)
+            .collect();
+
+            let msg = format!(
+                "{} must be specified when \"use_ssl\" is set.",
+                missing_fields.join(", ")
+            );
+            return Err(GeyserPluginError::Custom(Box::new(
+                GeyserPluginMongoDbError::ConfigurationError { msg },
+            )));
+        }
+        // let result= if let Some(true)=config.use_ssl{
+        //     if config.server_ca.is_none(){
+        //         let msg = "\"server_ca\" must be specified when \"use_ssl\" is set".to_string();
+        //         return Err(GeyserPluginError::Custom(Box::new(
+        //             GeyserPluginMongoDbError::ConfigurationError { msg },
+        //         )));
+        //     }
+        //     if config.server_ca.is_none(){
+        //         let msg = "\"client_cert\" must be specified when \"use_ssl\" is set".to_string();
+        //         return Err(GeyserPluginError::Custom(Box::new(
+        //             GeyserPluginMongoDbError::ConfigurationError { msg },
+        //         )));
+        //     }
+        //     if config.server_ca.is_none(){
+        //         let msg = "\"client_key\" must be specified when \"use_ssl\" is set".to_string();
+        //         return Err(GeyserPluginError::Custom(Box::new(
+        //             GeyserPluginMongoDbError::ConfigurationError { msg },
+        //         )));
+        //     }
+
+      // Set up TLS options
+      let tls_options = match TlsOptions::builder()
+      .allow_invalid_certificates(config.allow_invalid_certificates.unwrap_or(false))
+      .ca_file(Path::new(config.server_ca.as_ref().unwrap()))
+      .certificate_file(Path::new(config.client_cert.as_ref().unwrap()))
+      .private_key_file(Path::new(config.client_key.as_ref().unwrap()))
+      .build()
+  {
+      Ok(options) => options,
+      Err(err) => {
+          let msg = format!("Failed to configure TLS options: {:?}", err);
+          return Err(GeyserPluginError::Custom(Box::new(
+              GeyserPluginMongoDbError::ConfigurationError { msg },
+          )));
+      }
+  };
+
+  client_options.tls = Some(Tls::Enabled(tls_options));
 }
+ // Create the MongoDB client
+ match Client::with_options(client_options) {
+    Ok(client) => Ok(client),
+    Err(err) => {
+        let msg = format!(
+            "Error in connecting to the MongoDB database: {:?} connection_str: {:?}",
+            err, connection_str
+        );
+        Err(GeyserPluginError::Custom(Box::new(
+            GeyserPluginMongoDbError::DataStoreConnectionError { msg },
+        )))
+    }
+}
+}
+// Create the MongoDB client
+fn build_bulk_account_insert_statement()->Result<Statement, GeyserPluginError>
+
+}
+   

@@ -26,7 +26,7 @@ pub struct GeyserPluginMongodb {
     batch_starting_slot: Option<u64>,
 }
 
-impl std::fmt::Debug for GeyserPluginMongoDB {
+impl std::fmt::Debug for GeyserPluginMongodb {
     fn fmt(&self, _: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         Ok(())
     }
