@@ -19,7 +19,7 @@ use {
         collections::HashSet, result, sync::{
             atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
             Arc, Mutex,
-        }, thread::{self, sleep, Builder, JoinHandle}, time::Duration, path::Path
+        }, thread::{self, sleep, Builder, JoinHandle}, time::Duration, {path::PathBuf, any::Any}
     }
 };
 
@@ -741,167 +741,157 @@ pub trait MongoDBClient {
     ) -> Result<(), GeyserPluginError>;
 }
 
-// impl SimpleMongoDbClient {
-//     fn connect_to_db(config: &GeyserPluginMongoDBConfig)->Result<Client, GeyserPluginError>{
-//         let port=config.port.unwrap_or(DEFAULT_MONGO_DB_PORT);
-//         let connection_str= if let Some(connection_str)= &config.connection_str{
-//             connection_str.clone()
-//         }else{
-//             if config.host.is_none() || config.user.is_none(){
-//                 let msg = format!(
-//                     "\"connection_str\": {:?}, or \"host\": {:?} \"user\": {:?} must be specified",
-//                     config.connection_str, config.host, config.user
-//                 );
-//                 return Err(GeyserPluginError::Custom(Box::new(
-//                     GeyserPluginMongoDbError::ConfigurationError { msg },
-
-//                 )))
-//             }
-//             format!(
-//                 "host={} user={} port={}",
-//                 config.host.as_ref().unwrap(),
-//                 config.user.as_ref().unwrap(),
-//                 port
-//             )
-//         };
-//         // Configure MongoDB client options
-//     let mut client_options = match ClientOptions::parse(&connection_str) {
-//         Ok(options) => options,
-//         Err(err) => {
-//             let msg = format!(
-//                 "Failed to parse MongoDB connection string: {:?}. Error: {:?}",
-//                 connection_str, err
-//             );
-//             return Err(GeyserPluginError::Custom(Box::new(
-//                 GeyserPluginMongoDbError::ConfigurationError { msg },
-//             )));
-//         }
-//     };
-
-//           // Configure TLS if use_ssl is enabled
-//     if let Some(true) = config.use_ssl {
-//         if config.server_ca.is_none() || config.client_cert.is_none() || config.client_key.is_none() {
-//             let missing_fields: Vec<&str> = [
-//                 ("server_ca", config.server_ca.is_none()),
-//                 ("client_cert", config.client_cert.is_none()),
-//                 ("client_key", config.client_key.is_none()),
-//             ]
-//             .iter()
-//             .filter(|(_, missing)| *missing)
-//             .map(|(field, _)| *field)
-//             .collect();
-
-//             let msg = format!(
-//                 "{} must be specified when \"use_ssl\" is set.",
-//                 missing_fields.join(", ")
-//             );
-//             return Err(GeyserPluginError::Custom(Box::new(
-//                 GeyserPluginMongoDbError::ConfigurationError { msg },
-//             )));
-//         }
-//         // let result= if let Some(true)=config.use_ssl{
-//         //     if config.server_ca.is_none(){
-//         //         let msg = "\"server_ca\" must be specified when \"use_ssl\" is set".to_string();
-//         //         return Err(GeyserPluginError::Custom(Box::new(
-//         //             GeyserPluginMongoDbError::ConfigurationError { msg },
-//         //         )));
-//         //     }
-//         //     if config.server_ca.is_none(){
-//         //         let msg = "\"client_cert\" must be specified when \"use_ssl\" is set".to_string();
-//         //         return Err(GeyserPluginError::Custom(Box::new(
-//         //             GeyserPluginMongoDbError::ConfigurationError { msg },
-//         //         )));
-//         //     }
-//         //     if config.server_ca.is_none(){
-//         //         let msg = "\"client_key\" must be specified when \"use_ssl\" is set".to_string();
-//         //         return Err(GeyserPluginError::Custom(Box::new(
-//         //             GeyserPluginMongoDbError::ConfigurationError { msg },
-//         //         )));
-//         //     }
-
-//       // Set up TLS options
-//       let tls_options = match TlsOptions::builder()
-//       .allow_invalid_certificates(config.allow_invalid_certificates.unwrap_or(false))
-//       .ca_file(Path::new(config.server_ca.as_ref().unwrap()))
-//       .certificate_file(Path::new(config.client_cert.as_ref().unwrap()))
-//       .private_key_file(Path::new(config.client_key.as_ref().unwrap()))
-//       .build()
-//   {
-//       Ok(options) => options,
-//       Err(err) => {
-//           let msg = format!("Failed to configure TLS options: {:?}", err);
-//           return Err(GeyserPluginError::Custom(Box::new(
-//               GeyserPluginMongoDbError::ConfigurationError { msg },
-//           )));
-//       }
-//   };
-
-//   client_options.tls = Some(Tls::Enabled(tls_options));
-// }
-//  // Create the MongoDB client
-//  match Client::with_options(client_options) {
-//     Ok(client) => Ok(client),
-//     Err(err) => {
-//         let msg = format!(
-//             "Error in connecting to the MongoDB database: {:?} connection_str: {:?}",
-//             err, connection_str
-//         );
-//         Err(GeyserPluginError::Custom(Box::new(
-//             GeyserPluginMongoDbError::DataStoreConnectionError { msg },
-//         )))
-//     }
-// }
-// }
-// // Create the MongoDB client
-// fn build_bulk_account_insert_statement()->Result<Statement, GeyserPluginError>
-
-// }
 impl SimpleMongoDbClient {
-    
-async fn parse_and_validate_config(
-    config: &GeyserPluginMongoDBConfig,
-) -> Result<ClientOptions, GeyserPluginMongoDbError> {
-    let connection_str = if let Some(connection_str) = &config.connection_str {
-        connection_str.clone()
-    } else {
-        let host = config.host.as_ref().ok_or_else(|| {
-            GeyserPluginMongoDbError::ConfigurationError {
-                msg: "Missing 'host' configuration".to_string(),
-            }
-        })?;
-        let user = config.user.as_ref().ok_or_else(|| {
-            GeyserPluginMongoDbError::ConfigurationError {
-                msg: "Missing 'user' configuration".to_string(),
-            }
-        })?;
-        let port = config.port.unwrap_or(DEFAULT_MONGO_DB_PORT);
-        // let password = config.password.as_deref().unwrap_or("");
-        format!("mongodb://{}:@{}:{}", user, host, port)
-    };
+    async fn connect_to_db(config: &GeyserPluginMongoDBConfig)->Result<Client, GeyserPluginError>{
+        let port=config.port.unwrap_or(DEFAULT_MONGO_DB_PORT);
+        let connection_str= if let Some(connection_str)= &config.connection_str{
+            connection_str.clone()
+        }else{
+            if config.host.is_none() || config.user.is_none(){
+                let msg = format!(
+                    "\"connection_str\": {:?}, or \"host\": {:?} \"user\": {:?} must be specified",
+                    config.connection_str, config.host, config.user
+                );
+                return Err(GeyserPluginError::Custom(Box::new(
+                    GeyserPluginMongoDbError::ConfigurationError { msg },
 
-    let client_options = ClientOptions::parse(&connection_str).await.map_err(|err| {
+                )))
+            }
+            format!(
+                "host={} user={} port={}",
+                config.host.as_ref().unwrap(),
+                config.user.as_ref().unwrap(),
+                port
+            )
+        };
+        // Configure MongoDB client options
+        let mut client_options = ClientOptions::parse(&connection_str).await.map_err(|err| {
         GeyserPluginMongoDbError::ConfigurationError {
             msg: format!("Invalid connection string: {}. Error: {}", connection_str, err),
         }
     })?;
 
-    if config.use_ssl.unwrap_or(false) {
-        let tls_options = configure_tls(config)?;
-        client_options.tls = Some(Tls::Enabled(tls_options));
+          // Configure TLS if use_ssl is enabled
+    if let Some(true) = config.use_ssl {
+        if config.server_ca.is_none() || config.client_cert.is_none() || config.client_key.is_none() {
+            let missing_fields: Vec<&str> = [
+                ("server_ca", config.server_ca.is_none()),
+                ("client_cert", config.client_cert.is_none()),
+                ("client_key", config.client_key.is_none()),
+            ]
+            .iter()
+            .filter(|(_, missing)| *missing)
+            .map(|(field, _)| *field)
+            .collect();
+
+            let msg = format!(
+                "{} must be specified when \"use_ssl\" is set.",
+                missing_fields.join(", ")
+            );
+            return Err(GeyserPluginError::Custom(Box::new(
+                GeyserPluginMongoDbError::ConfigurationError { msg },
+            )));
+        }
+    
+        let server_ca = config.server_ca.as_ref().map(PathBuf::from); 
+        //     // let client_cert = config.client_cert.as_ref().map(PathBuf::from);  
+            let client_key = config.client_key.as_ref().map(PathBuf::from); 
+        
+      // Set up TLS options
+      let tls_options = TlsOptions::builder()
+      .ca_file_path(server_ca)
+      .cert_key_file_path(client_key)
+      .build();
+
+  client_options.tls = Some(Tls::Enabled(tls_options));
+}
+ // Create the MongoDB client
+ match Client::with_options(client_options) {
+    Ok(client) => Ok(client),
+    Err(err) => {
+        let msg = format!(
+            "Error in connecting to the MongoDB database: {:?} connection_str: {:?}",
+            err, connection_str
+        );
+        Err(GeyserPluginError::Custom(Box::new(
+            GeyserPluginMongoDbError::DataStoreConnectionError { msg },
+        )))
     }
-
-    Ok(client_options)
 }
-
-fn configure_tls(config: &GeyserPluginMongoDBConfig) -> Result<TlsOptions, GeyserPluginMongoDbError> {
-    let server_ca = config.server_ca.as_ref().ok_or_else(|| {
-     GeyserPluginMongoDbError::ConfigurationError {msg: "Missing 'server_ca' for TLS".to_string()}
- })?;
- let client_cert = config.client_cert.as_ref().ok_or_else(|| {
-    GeyserPluginMongoDbError::ConfigurationError {msg: "Missing 'client_cert' for TLS".to_string()}
- })?;
- let client_key = config.client_key.as_ref().ok_or_else(|| {
-     GeyserPluginMongoDbError::ConfigurationError {msg: "Missing 'client_key' for TLS".to_string()}
- })?;
+}
+// Create the MongoDB client
+fn build_bulk_account_insert_statement()->Result<Statement, GeyserPluginError>{
 
 }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+}
+// impl SimpleMongoDbClient {
+    
+// async fn parse_and_validate_config(
+//     config: &GeyserPluginMongoDBConfig,
+// ) -> Result<ClientOptions, GeyserPluginMongoDbError> {
+//     let connection_str = if let Some(connection_str) = &config.connection_str {
+//         connection_str.clone()
+//     } else {
+//         let host = config.host.as_ref().ok_or_else(|| {
+//             GeyserPluginMongoDbError::ConfigurationError {
+//                 msg: "Missing 'host' configuration".to_string(),
+//             }
+//         })?;
+//         let user = config.user.as_ref().ok_or_else(|| {
+//             GeyserPluginMongoDbError::ConfigurationError {
+//                 msg: "Missing 'user' configuration".to_string(),
+//             }
+//         })?;
+//         let port = config.port.unwrap_or(DEFAULT_MONGO_DB_PORT);
+//         // let password = config.password.as_deref().unwrap_or("");
+//         format!("mongodb://{}:@{}:{}", user, host, port)
+//     };
+
+//     let mut client_options = ClientOptions::parse(&connection_str).await.map_err(|err| {
+//         GeyserPluginMongoDbError::ConfigurationError {
+//             msg: format!("Invalid connection string: {}. Error: {}", connection_str, err),
+//         }
+//     })?;
+
+//     if config.use_ssl.unwrap_or(false) {
+//         let tls_options = Self::configure_tls(config)?;
+//         client_options.tls = Some(Tls::Enabled(tls_options));
+//     }
+
+//     Ok(client_options)
+// }
+
+// fn configure_tls(config: &GeyserPluginMongoDBConfig) -> Result<TlsOptions, GeyserPluginMongoDbError> {
+//     let server_ca = config.server_ca.as_ref().map(PathBuf::from); 
+//     // let client_cert = config.client_cert.as_ref().map(PathBuf::from);  
+//     let client_key = config.client_key.as_ref().map(PathBuf::from); 
+
+//     TlsOptions::builder()
+//     .ca_file_path(server_ca)
+//     .cert_key_file_path(client_key) // Corrected method and single argument
+//     .build();
+//     Ok(())
+
+// }
+// }
