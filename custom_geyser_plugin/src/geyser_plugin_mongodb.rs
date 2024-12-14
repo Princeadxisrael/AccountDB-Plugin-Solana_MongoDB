@@ -103,3 +103,6 @@ pub enum GeyserPluginMongoDbError {
     ReplicaAccountV001NotSupported,
 }
 
+impl GeyserPlugin for GeyserPluginMongodb{
+    
+}

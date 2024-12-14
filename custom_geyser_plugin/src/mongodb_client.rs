@@ -4,7 +4,7 @@ use {
     chrono::Utc, 
     crossbeam_channel::{bounded, Receiver, RecvTimeoutError, Sender}, 
     log::*, 
-    mongodb::{bson::doc, options::{ClientOptions, Tls, TlsOptions}, Client}, 
+    mongodb::{bson::{self, doc, spec::BinarySubtype, Document}, options::{ClientOptions, InsertManyOptions, Tls, TlsOptions}, Client}, 
     openssl::ssl::{SslConnector, SslFiletype, SslMethod}, 
     serde::{Deserialize, Serialize}, 
     solana_geyser_plugin_interface::geyser_plugin_interface::{
@@ -12,14 +12,14 @@ use {
     }, 
     solana_measure::measure::Measure, solana_metrics::*, 
     solana_runtime::bank::RewardType,
-    solana_sdk::{address_lookup_table::instruction, instruction::{CompiledInstruction, Instruction}, message::{v0::{self, LoadedAddresses, MessageAddressTableLookup}, 
+    solana_sdk::{account::{AccountSharedData, ReadableAccount}, address_lookup_table::instruction, instruction::{CompiledInstruction, Instruction}, message::{v0::{self, LoadedAddresses, MessageAddressTableLookup}, 
     Message,MessageHeader,SanitizedMessage}, pubkey, timing::AtomicInterval, transaction::TransactionError}, 
     solana_transaction_status::{InnerInstructions, Reward, TransactionStatus, TransactionStatusMeta,TransactionTokenBalance}, 
     std::{
-        collections::HashSet, result, sync::{
+        any::Any, collections::HashSet, path::PathBuf, result, sync::{
             atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
             Arc, Mutex,
-        }, thread::{self, sleep, Builder, JoinHandle}, time::Duration, {path::PathBuf, any::Any}
+        }, thread::{self, sleep, Builder, JoinHandle}, time::Duration
     }
 };
 
@@ -547,7 +547,6 @@ fn build_db_transaction(
 
 
 //MongoDB_CLIENT
-
 ///Wraps MongoDB client connection and prepared statements
 struct MongodbClientWrapper {
     client: mongodb::Client,
@@ -758,17 +757,20 @@ impl SimpleMongoDbClient {
                 )))
             }
             format!(
-                "host={} user={} port={}",
+                "mongodb://host={}:@user={}:port{}",
                 config.host.as_ref().unwrap(),
                 config.user.as_ref().unwrap(),
                 port
             )
+            
         };
         // Configure MongoDB client options
         let mut client_options = ClientOptions::parse(&connection_str).await.map_err(|err| {
-        GeyserPluginMongoDbError::ConfigurationError {
-            msg: format!("Invalid connection string: {}. Error: {}", connection_str, err),
-        }
+                GeyserPluginError::Custom(Box::new(
+                    GeyserPluginMongoDbError::ConfigurationError {
+                        msg: format!("Invalid connection string: {}. Error: {}", connection_str, err),
+                    }
+                ))
     })?;
 
           // Configure TLS if use_ssl is enabled
@@ -799,6 +801,7 @@ impl SimpleMongoDbClient {
         
       // Set up TLS options
       let tls_options = TlsOptions::builder()
+      .allow_invalid_certificates(false)
       .ca_file_path(server_ca)
       .cert_key_file_path(client_key)
       .build();
@@ -819,10 +822,74 @@ impl SimpleMongoDbClient {
     }
 }
 }
-// Create the MongoDB client
-fn build_bulk_account_insert_statement()->Result<Statement, GeyserPluginError>{
 
+pub fn build_bulk_account_insert_documents(accounts:Vec<(String,AccountSharedData, u64, u64, Option<String>)>, store_historical_data:bool)->Result<Vec<Document>, GeyserPluginMongoDbError>{
+    let mut documents = Vec::with_capacity(accounts.len());
+
+    for (pubkey,account, slot, write_version,txn_signature)in accounts {
+        let doc = doc! {
+            "pubkey": pubkey,
+            "slot": slot as i64,
+            "owner": account.owner().to_string(),
+            "lamports": account.lamports() as i64,
+            "executable": true,
+            "rent_epoch": account.rent_epoch() as i64,
+            "data": bson::Binary{
+                subtype:BinarySubtype::Generic,
+                bytes:account.data().to_vec(),
+            },
+            "write_version": write_version as i64, //passed externally
+            "updated_on": bson::DateTime::now(),
+            "txn_signature": txn_signature.unwrap_or_default(),
+        };
+
+        documents.push(doc);
+    }
+
+    let mut doc = Document::from(doc);
+
+    if store_historical_data {
+        doc.insert("historical", true);
+    }
+
+    Ok(documents)
 }
+
+pub async fn insert_accounts(
+    client: &Client,
+    db_name: &str,
+    collection_name: &str,
+    accounts: Vec<(String,AccountSharedData,u64,u64,Option<String>)>,
+    config: &GeyserPluginMongoDBConfig,
+) -> Result<(), GeyserPluginMongoDbError> {
+    let database = client.database(db_name);
+    let collection = database.collection::<Document>(collection_name);
+    
+    //deter
+    let batch_size = config.batch_size.unwrap_or(10);
+    let documents = Self::build_bulk_account_insert_documents(accounts, config.store_account_historical_data.unwrap_or(false))?;
+
+    //return if there are no documents to insert
+    if documents.is_empty() {
+        return Ok(());
+    }
+
+    let chunks=documents.chunks(batch_size);
+
+    for chunk in chunks{
+        let options = InsertManyOptions::builder().ordered(false).build();
+        if let Err(err) = collection.insert_many(chunk.to_vec(),options).await{
+            if config.panic_on_db_errors.unwrap_or(false){
+                return Err(GeyserPluginMongoDbError::DataSchemaError { msg: format!("Failed to insert accounts:{}", err),
+            });
+            }else{
+                eprint!("Error inserting accounts:{}", err)
+            }
+        }
+            
+    }
+    Ok(())
+    }
 }
 
 
@@ -844,7 +911,8 @@ fn build_bulk_account_insert_statement()->Result<Statement, GeyserPluginError>{
 
 
 
-}
+
+
 // impl SimpleMongoDbClient {
     
 // async fn parse_and_validate_config(
