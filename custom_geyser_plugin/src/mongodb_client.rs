@@ -4,7 +4,7 @@ use {
     chrono::Utc, 
     crossbeam_channel::{bounded, Receiver, RecvTimeoutError, Sender}, 
     log::*, 
-    mongodb::{bson::{self, doc, spec::BinarySubtype, Document}, options::{ClientOptions, InsertManyOptions, Tls, TlsOptions}, Client}, 
+    mongodb::{bson::{self, doc, spec::BinarySubtype, Document}, options::{ClientOptions, InsertManyOptions, Tls, TlsOptions, UpdateOptions}, Client, Collection}, 
     openssl::ssl::{SslConnector, SslFiletype, SslMethod}, 
     serde::{Deserialize, Serialize}, 
     solana_geyser_plugin_interface::geyser_plugin_interface::{
@@ -823,13 +823,15 @@ impl SimpleMongoDbClient {
 }
 }
 
+/// creates BSON documents for each account. The documents are prepared in batches based on batch_size
+/// fields are cast to i64 to match mongoDB handling of integers
 pub fn build_bulk_account_insert_documents(accounts:Vec<(String,AccountSharedData, u64, u64, Option<String>)>, store_historical_data:bool)->Result<Vec<Document>, GeyserPluginMongoDbError>{
     let mut documents = Vec::with_capacity(accounts.len());
 
     for (pubkey,account, slot, write_version,txn_signature)in accounts {
-        let doc = doc! {
+        let mut doc = doc! {
             "pubkey": pubkey,
-            "slot": slot as i64,
+            "slot": slot as i64, //passed externally
             "owner": account.owner().to_string(),
             "lamports": account.lamports() as i64,
             "executable": true,
@@ -842,16 +844,14 @@ pub fn build_bulk_account_insert_documents(accounts:Vec<(String,AccountSharedDat
             "updated_on": bson::DateTime::now(),
             "txn_signature": txn_signature.unwrap_or_default(),
         };
-
+        if store_historical_data {
+            doc.insert("historical", true);
+        }
+    
         documents.push(doc);
     }
 
-    let mut doc = Document::from(doc);
-
-    if store_historical_data {
-        doc.insert("historical", true);
-    }
-
+    
     Ok(documents)
 }
 
@@ -877,8 +877,8 @@ pub async fn insert_accounts(
     let chunks=documents.chunks(batch_size);
 
     for chunk in chunks{
-        let options = InsertManyOptions::builder().ordered(false).build();
-        if let Err(err) = collection.insert_many(chunk.to_vec(),options).await{
+        
+        if let Err(err) = collection.insert_many(chunk.to_vec()).await{
             if config.panic_on_db_errors.unwrap_or(false){
                 return Err(GeyserPluginMongoDbError::DataSchemaError { msg: format!("Failed to insert accounts:{}", err),
             });
@@ -890,6 +890,41 @@ pub async fn insert_accounts(
     }
     Ok(())
     }
+
+    pub async fn upsert_single_account(
+        collection: &Collection<Document>,
+        pubkey: &str,
+        account: &AccountSharedData,
+        slot: u64,
+        write_version: u64,
+        txn_signature: Option<&str>,
+    ) -> Result<(),GeyserPluginMongoDbError> {
+        let filter = doc! { "pubkey": pubkey };
+        let update = doc! {
+            "$set": {
+                "slot": slot as i64,
+                "owner": account.owner().to_string(),
+                "lamports": account.lamports() as i64,
+                "executable": account.executable(),
+                "rent_epoch": account.rent_epoch() as i64,
+                "data": bson::Binary {
+                    subtype: bson::spec::BinarySubtype::Generic,
+                    bytes: account.data().to_vec(),
+                },
+                "write_version": write_version as i64,
+                "updated_on": bson::DateTime::now(),
+                "txn_signature": txn_signature.unwrap_or_default(),
+            },
+            "$setOnInsert": { "pubkey": pubkey },
+        };
+        
+          // Set the upsert option to true
+        let options = UpdateOptions::builder().upsert(true).build();
+
+        collection.update_one(filter, update, Some(options));
+        Ok(())
+    }
+    
 }
 
 
